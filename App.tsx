@@ -281,7 +281,7 @@ const App: React.FC = () => {
               </div>
             </>
           ) : (
-            <div className="space-y-12 pb-32">
+            <div className="space-y-12 pb-80">
               {currentMessages.map((msg, idx) => (
                 <div key={idx} className="animate-in fade-in slide-in-from-bottom-2">
                   {msg.role === 'user' ? (
@@ -339,8 +339,8 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* FLOATING COMMAND HUB */}
-        <div className="absolute bottom-6 left-0 right-0 px-6 z-50 animate-in slide-in-from-bottom-6 duration-700">
+        {/* FLOATING COMMAND HUB - Elevado considerablemente */}
+        <div className="absolute bottom-32 left-0 right-0 px-6 z-50 animate-in slide-in-from-bottom-8 duration-700">
           
           {selectedImage && isCreativeViewOpen && (
             <div className="mb-4 flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-300">
