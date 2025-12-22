@@ -34,7 +34,7 @@ const App: React.FC = () => {
     { role: 'sam', content: 'SAM activo. Consultoría estratégica disponible. ¿En qué puedo asistir hoy?', type: 'text' }
   ]);
   const [academicMessages, setAcademicMessages] = useState<Message[]>([
-    { role: 'sam', content: 'Entorno Académico SAM habilitado. Nivel de rigor configurado.', type: 'text' }
+    { role: 'sam', content: 'Entorno Académico SAM habilitado. Nivel de rigor científico configurado.', type: 'text' }
   ]);
 
   const currentMessages = mode === 'pregunta' ? chatMessages : academicMessages;
@@ -180,72 +180,72 @@ const App: React.FC = () => {
   }, [currentMessages, generation.isGenerating]);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#050505] text-zinc-300 overflow-hidden font-sans relative">
+    <div className="flex flex-col h-[100dvh] w-full bg-[#050505] text-zinc-300 overflow-hidden font-sans relative">
       
-      <div className="absolute inset-0 z-0 pointer-events-none bg-gradient-to-b from-[#4a1d4a]/20 via-black to-black opacity-60"></div>
+      {/* Background Layer */}
+      <div className="absolute inset-0 z-0 pointer-events-none bg-gradient-to-b from-[#4a1d4a]/10 via-black to-black opacity-80"></div>
 
-      {/* Main Container: Full Screen Height and Width */}
-      <div className="flex-1 flex flex-col relative z-10 h-full w-full max-w-[600px] mx-auto overflow-hidden bg-black/20 backdrop-blur-sm">
+      {/* Main Layout Container: Occupies full screen, no scroll itself */}
+      <main className="flex-1 flex flex-col relative z-10 w-full max-w-[650px] mx-auto overflow-hidden">
         
-        {/* HEADER */}
-        <header className="flex flex-col shrink-0 px-6 pt-10 pb-4 safe-area-top">
+        {/* HEADER: Fixed at top */}
+        <header className="flex flex-col shrink-0 px-6 pt-12 pb-4 safe-area-top backdrop-blur-sm bg-black/10">
           <div className="flex items-center justify-between">
             <button 
               onClick={() => { setIsSidebarOpen(true); setSidebarView('main'); }} 
-              className="w-10 h-10 bg-zinc-900/40 border border-white/5 rounded-full flex flex-col items-center justify-center gap-1 transition-all hover:bg-zinc-800/60"
+              className="w-10 h-10 bg-zinc-900/50 border border-white/5 rounded-full flex flex-col items-center justify-center gap-1 transition-all active:scale-90"
             >
               <div className="w-4 h-[1.5px] bg-white rounded-full"></div>
               <div className="w-4 h-[1.5px] bg-white rounded-full"></div>
             </button>
             
-            {!isCreativeViewOpen && (
-              <div className="bg-zinc-900/40 backdrop-blur-md rounded-full p-1 flex items-center border border-white/5">
-                <button onClick={() => setMode('pregunta')} className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.1em] transition-all ${mode === 'pregunta' ? 'bg-white text-black' : 'text-zinc-500'}`}>Consultoría</button>
-                <button onClick={() => setMode('academic')} className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.1em] transition-all ${mode === 'academic' ? 'bg-white text-black' : 'text-zinc-500'}`}>Academia</button>
+            {!isCreativeViewOpen ? (
+              <div className="bg-zinc-900/60 backdrop-blur-md rounded-full p-1 flex items-center border border-white/5 shadow-xl">
+                <button onClick={() => setMode('pregunta')} className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all ${mode === 'pregunta' ? 'bg-white text-black' : 'text-zinc-500'}`}>Consultoría</button>
+                <button onClick={() => setMode('academic')} className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all ${mode === 'academic' ? 'bg-white text-black' : 'text-zinc-500'}`}>Academia</button>
               </div>
-            )}
-            {isCreativeViewOpen && (
+            ) : (
               <div className="flex flex-col items-center">
                 <h1 className="text-lg font-medium text-white tracking-tight">Estudio Visual</h1>
-                <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest">{5 - dailyUsage.count} Disponibles</span>
+                <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-[0.2em]">SAM Generation Elite</span>
               </div>
             )}
 
-            <button onClick={() => setIsCreativeViewOpen(!isCreativeViewOpen)} className={`p-2 transition-all ${isCreativeViewOpen ? 'text-white' : 'text-zinc-500 hover:text-white'}`}>
+            <button onClick={() => setIsCreativeViewOpen(!isCreativeViewOpen)} className={`p-2 transition-all ${isCreativeViewOpen ? 'text-white scale-110' : 'text-zinc-500 hover:text-white'}`}>
               <ICONS.Pencil />
             </button>
           </div>
         </header>
 
-        {/* CONTENT AREA: Fills all remaining space */}
-        <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-4">
+        {/* MESSAGES AREA: THE ONLY SCROLLABLE PART */}
+        <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-6 overscroll-contain">
           {isCreativeViewOpen ? (
-            <div className="space-y-6">
-              <div className="relative w-full rounded-[40px] overflow-hidden aspect-[4/5] shadow-2xl border border-white/10 group">
+            <div className="animate-in fade-in zoom-in-95 duration-500">
+              <div className="relative w-full rounded-[40px] overflow-hidden aspect-[4/5] shadow-[0_40px_80px_rgba(0,0,0,0.8)] border border-white/10">
                 <img src="https://img.freepik.com/premium-photo/anime-santa-claus-character-illustration-with-festive-elements_1177187-178636.jpg" className="w-full h-full object-cover" alt="Santa" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent flex flex-col items-center justify-end p-8 text-center">
-                  <h2 className="text-xl font-normal text-white leading-tight mb-6">Generación Visual Élite</h2>
-                  <button onClick={() => setInputValue("Crea una foto de Santa Claus en estilo anime cinematográfico")} className="px-8 py-3 bg-white text-black rounded-full text-xs font-bold tracking-wide hover:scale-105 transition-all">Empezar</button>
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col items-center justify-end p-10 text-center">
+                  <h2 className="text-2xl font-normal text-white leading-tight mb-8">Activos Visuales SAM</h2>
+                  <button onClick={() => setInputValue("Crea una foto de Santa Claus en estilo anime cinematográfico")} className="px-10 py-4 bg-white text-black rounded-full text-xs font-bold tracking-widest uppercase hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]">Generar ahora</button>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="space-y-10 pb-10">
+            <div className="space-y-12">
               {currentMessages.map((msg, idx) => (
-                <div key={idx} className="animate-in fade-in slide-in-from-bottom-2">
+                <div key={idx} className={`animate-in fade-in slide-in-from-bottom-3 duration-500 ${msg.role === 'sam' ? 'pl-0' : 'pl-4'}`}>
                   {msg.role === 'user' ? (
                     <div className="flex flex-col items-end">
-                      <div className="bg-zinc-800/30 px-5 py-3 rounded-[24px] max-w-[90%] border border-white/5">
-                        <p className="text-white text-[14px] leading-relaxed">{msg.content}</p>
+                      <div className="bg-[#111] px-5 py-3 rounded-[24px] max-w-[90%] border border-white/5 shadow-sm">
+                        <p className="text-zinc-200 text-[14px] leading-relaxed">{msg.content}</p>
                       </div>
                     </div>
                   ) : (
                     <div className="max-w-none">
-                      <div className="prose prose-invert prose-sm opacity-90 leading-relaxed text-[14px]">
+                      <div className="prose prose-invert prose-sm opacity-95 leading-relaxed text-[15px] font-normal selection:bg-white/20">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                       {msg.mediaUrl && (
-                        <div className="mt-6 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                        <div className="mt-8 rounded-[32px] overflow-hidden border border-white/10 shadow-2xl transition-transform hover:scale-[1.01]">
                           <img src={msg.mediaUrl} className="w-full h-auto" />
                         </div>
                       )}
@@ -253,36 +253,36 @@ const App: React.FC = () => {
                   )}
                 </div>
               ))}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-4" />
             </div>
           )}
         </div>
 
-        {/* COMMAND HUB: Fixed at the very bottom, no gaps */}
-        <div className="shrink-0 pt-2 px-6 pb-8 bg-gradient-to-t from-black via-black/95 to-transparent border-t border-white/5 safe-area-bottom">
+        {/* COMMAND HUB: Fixed at the absolute bottom */}
+        <div className="shrink-0 p-6 bg-gradient-to-t from-black via-black/95 to-transparent border-t border-white/5 safe-area-bottom">
           {!isCreativeViewOpen && (
             <div className="grid grid-cols-2 gap-2 mb-4">
               <button 
                 onClick={() => setIsUtilMenuOpen(!isUtilMenuOpen)}
-                className="flex items-center justify-center gap-2 h-10 bg-zinc-900/60 border border-white/5 rounded-xl text-[9px] font-bold uppercase tracking-widest text-zinc-500">
-                <ICONS.Zap /> {utility === 'none' ? 'Módulos' : 'Activo'}
+                className="flex items-center justify-center gap-2 h-10 bg-zinc-900/40 border border-white/5 rounded-2xl text-[9px] font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-300 transition-colors">
+                <ICONS.Zap /> {utility === 'none' ? 'Módulos' : 'Nodo Activo'}
               </button>
-              <button onClick={toggleCamera} className="flex items-center justify-center gap-2 h-10 bg-zinc-900/60 border border-white/5 rounded-xl text-[9px] font-bold uppercase tracking-widest text-zinc-500">
-                <ICONS.Camera /> Cámara
+              <button onClick={toggleCamera} className="flex items-center justify-center gap-2 h-10 bg-zinc-900/40 border border-white/5 rounded-2xl text-[9px] font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-300 transition-colors">
+                <ICONS.Camera /> Sensores
               </button>
             </div>
           )}
 
           <div className="flex items-center gap-3">
-            <div className="flex-1 h-14 bg-zinc-900/90 backdrop-blur-3xl border border-white/10 rounded-full flex items-center px-5 shadow-2xl transition-all focus-within:border-white/20">
+            <div className="flex-1 h-14 bg-[#0a0a0a]/90 backdrop-blur-3xl border border-white/10 rounded-full flex items-center px-5 shadow-2xl transition-all focus-within:border-white/20 focus-within:bg-[#111]">
               <input 
-                className="bg-transparent border-none outline-none flex-1 text-white placeholder-zinc-700 text-[14px] font-medium"
-                placeholder={isCreativeViewOpen ? "Describir visual..." : "Consultar SAM..."}
+                className="bg-transparent border-none outline-none flex-1 text-white placeholder-zinc-800 text-[14px] font-medium"
+                placeholder={isCreativeViewOpen ? "Protocolo de diseño..." : "Consulta estratégica..."}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               />
-              <button onClick={() => handleSend()} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${inputValue.trim() ? 'bg-white text-black shadow-lg shadow-white/10' : 'text-zinc-800 bg-white/5'}`}>
+              <button onClick={() => handleSend()} className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${inputValue.trim() ? 'bg-white text-black shadow-lg shadow-white/10 active:scale-90' : 'text-zinc-900 bg-white/5'}`}>
                 {generation.isGenerating ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : <ICONS.Send />}
               </button>
             </div>
@@ -298,27 +298,27 @@ const App: React.FC = () => {
           }} />
         </div>
 
-      </div>
+      </main>
 
       {/* SIDEBAR */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex animate-in fade-in duration-300" onClick={() => setIsSidebarOpen(false)}>
-          <div className="w-[300px] h-full bg-[#0a0a0a] border-r border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-left duration-300" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[200] flex animate-in fade-in duration-300" onClick={() => setIsSidebarOpen(false)}>
+          <div className="w-[300px] h-full bg-[#050505] border-r border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-left duration-300" onClick={e => e.stopPropagation()}>
              <div className="p-10 border-b border-white/5 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                    <div className="p-2 bg-white/5 rounded-lg border border-white/10">
                       <SAM_LOGO className="w-5 h-5 text-white" />
                    </div>
-                   <h2 className="text-white font-bold text-sm tracking-tight uppercase">SAM Elite</h2>
+                   <h2 className="text-white font-bold text-xs tracking-[0.2em] uppercase">SAM Elite</h2>
                 </div>
-                <button onClick={() => setIsSidebarOpen(false)} className="text-zinc-500 hover:text-white"><ICONS.Close /></button>
+                <button onClick={() => setIsSidebarOpen(false)} className="text-zinc-600 hover:text-white"><ICONS.Close /></button>
              </div>
-             <div className="flex-1 overflow-y-auto p-6 space-y-2">
-                <button onClick={() => { setIsCreativeViewOpen(false); setIsSidebarOpen(false); }} className={`w-full text-left p-4 rounded-2xl transition-all text-xs font-bold uppercase tracking-widest ${!isCreativeViewOpen ? 'bg-white/5 text-white border border-white/10' : 'text-zinc-500 hover:bg-white/5'}`}>Consultoría</button>
-                <button onClick={() => { setIsCreativeViewOpen(true); setIsSidebarOpen(false); }} className={`w-full text-left p-4 rounded-2xl transition-all text-xs font-bold uppercase tracking-widest ${isCreativeViewOpen ? 'bg-white/5 text-white border border-white/10' : 'text-zinc-500 hover:bg-white/5'}`}>Estudio Visual</button>
+             <div className="flex-1 overflow-y-auto p-6 space-y-2 no-scrollbar">
+                <button onClick={() => { setIsCreativeViewOpen(false); setIsSidebarOpen(false); }} className={`w-full text-left p-4 rounded-2xl transition-all text-[10px] font-bold uppercase tracking-widest ${!isCreativeViewOpen ? 'bg-white/5 text-white border border-white/10' : 'text-zinc-600 hover:bg-white/5'}`}>Consultoría</button>
+                <button onClick={() => { setIsCreativeViewOpen(true); setIsSidebarOpen(false); }} className={`w-full text-left p-4 rounded-2xl transition-all text-[10px] font-bold uppercase tracking-widest ${isCreativeViewOpen ? 'bg-white/5 text-white border border-white/10' : 'text-zinc-600 hover:bg-white/5'}`}>Estudio Visual</button>
              </div>
              <div className="p-10 border-t border-white/5">
-                <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em]">Node Status: Active</p>
+                <p className="text-[10px] text-zinc-700 font-bold uppercase tracking-[0.3em]">Core: Connected</p>
              </div>
           </div>
         </div>
