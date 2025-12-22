@@ -56,6 +56,13 @@ const App: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const stylesGallery = [
+    { id: 'cinematic', title: 'Cinematográfico', prompt: 'Estilo cinematográfico, alta definición, iluminación dramática', url: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=300' },
+    { id: 'anime', title: 'Anime Élite', prompt: 'Estilo anime moderno de alta calidad, colores vibrantes, trazos finos', url: 'https://images.unsplash.com/photo-1578632738908-484462a6f33a?auto=format&fit=crop&q=80&w=300' },
+    { id: '3d', title: 'Render 3D', prompt: 'Render 3D profesional, Unreal Engine 5, hiperdetallado, realista', url: 'https://images.unsplash.com/photo-1618336753974-aae8e04506aa?auto=format&fit=crop&q=80&w=300' },
+    { id: 'cyberpunk', title: 'Cyberpunk', prompt: 'Estilo Cyberpunk, luces de neón, atmósfera futurista nocturna', url: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&q=80&w=300' },
+  ];
+
   useEffect(() => {
     localStorage.setItem('sam_gallery', JSON.stringify(gallery));
   }, [gallery]);
@@ -71,20 +78,6 @@ const App: React.FC = () => {
         setIsCameraActive(true);
         setTimeout(() => videoRef.current && (videoRef.current.srcObject = stream), 100);
       } catch (e) { alert("Visión restringida. Verifique permisos."); }
-    }
-  };
-
-  const captureFrame = () => {
-    if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(videoRef.current, 0, 0);
-      const dataUrl = canvas.toDataURL('image/jpeg');
-      const base64 = dataUrl.split(',')[1];
-      setSelectedImage({ base64, type: 'image/jpeg' });
-      toggleCamera();
     }
   };
 
@@ -182,13 +175,10 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[#050505] text-zinc-300 overflow-hidden font-sans relative">
       
-      {/* Background Layer */}
       <div className="absolute inset-0 z-0 pointer-events-none bg-gradient-to-b from-[#4a1d4a]/10 via-black to-black opacity-80"></div>
 
-      {/* Main Layout Container: Occupies full screen, no scroll itself */}
       <main className="flex-1 flex flex-col relative z-10 w-full max-w-[650px] mx-auto overflow-hidden">
         
-        {/* HEADER: Fixed at top */}
         <header className="flex flex-col shrink-0 px-6 pt-12 pb-4 safe-area-top backdrop-blur-sm bg-black/10">
           <div className="flex items-center justify-between">
             <button 
@@ -207,7 +197,7 @@ const App: React.FC = () => {
             ) : (
               <div className="flex flex-col items-center">
                 <h1 className="text-lg font-medium text-white tracking-tight">Estudio Visual</h1>
-                <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-[0.2em]">SAM Generation Elite</span>
+                <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-[0.2em]">SMA VERCE</span>
               </div>
             )}
 
@@ -217,16 +207,35 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* MESSAGES AREA: THE ONLY SCROLLABLE PART */}
         <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-6 overscroll-contain">
           {isCreativeViewOpen ? (
-            <div className="animate-in fade-in zoom-in-95 duration-500">
-              <div className="relative w-full rounded-[40px] overflow-hidden aspect-[4/5] shadow-[0_40px_80px_rgba(0,0,0,0.8)] border border-white/10">
-                <img src="https://img.freepik.com/premium-photo/anime-santa-claus-character-illustration-with-festive-elements_1177187-178636.jpg" className="w-full h-full object-cover" alt="Santa" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col items-center justify-end p-10 text-center">
-                  <h2 className="text-2xl font-normal text-white leading-tight mb-8">Activos Visuales SAM</h2>
-                  <button onClick={() => setInputValue("Crea una foto de Santa Claus en estilo anime cinematográfico")} className="px-10 py-4 bg-white text-black rounded-full text-xs font-bold tracking-widest uppercase hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]">Generar ahora</button>
+            <div className="space-y-10 pb-8">
+               <div className="relative w-full rounded-[40px] overflow-hidden aspect-[16/10] shadow-[0_40px_80px_rgba(0,0,0,0.8)] border border-white/10">
+                <img 
+                  src="https://img.freepik.com/premium-photo/anime-santa-claus-character-illustration-with-festive-elements_1177187-178636.jpg" 
+                  className="w-full h-full object-cover" 
+                  alt="Main Santa Anime" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col items-center justify-end p-8 text-center">
+                  <h2 className="text-xl font-normal text-white leading-tight mb-4 tracking-tight">Potencial Creativo SAM</h2>
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] mb-4">5 Créditos Diarios</p>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                 {stylesGallery.map((style) => (
+                   <button 
+                     key={style.id}
+                     onClick={() => setInputValue(style.prompt)}
+                     className="group relative aspect-square rounded-[30px] overflow-hidden border border-white/5 transition-all hover:border-white/20 active:scale-95"
+                   >
+                     <img src={style.url} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-700" alt={style.title} />
+                     <div className="absolute inset-0 bg-black/40 group-hover:bg-black/10 transition-colors" />
+                     <div className="absolute bottom-4 left-4 right-4">
+                        <span className="text-[10px] text-white font-bold uppercase tracking-widest">{style.title}</span>
+                     </div>
+                   </button>
+                 ))}
               </div>
             </div>
           ) : (
@@ -258,7 +267,6 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* COMMAND HUB: Fixed at the absolute bottom */}
         <div className="shrink-0 p-6 bg-gradient-to-t from-black via-black/95 to-transparent border-t border-white/5 safe-area-bottom">
           {!isCreativeViewOpen && (
             <div className="grid grid-cols-2 gap-2 mb-4">
@@ -319,6 +327,7 @@ const App: React.FC = () => {
              </div>
              <div className="p-10 border-t border-white/5">
                 <p className="text-[10px] text-zinc-700 font-bold uppercase tracking-[0.3em]">Core: Connected</p>
+                <p className="text-[8px] text-zinc-800 mt-2">Author: SMA VERCE</p>
              </div>
           </div>
         </div>
