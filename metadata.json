@@ -1,0 +1,8 @@
+{
+  "name": "SAM - Strategic Agentic Model",
+  "description": "A mega-professional AI agent and chatbot with a minimalist, seamless interface inspired by high-end design. SAM handles text, image, and video generation in a unified environment.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
