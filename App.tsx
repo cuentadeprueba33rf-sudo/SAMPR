@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>('pregunta');
   const [academicGrade, setAcademicGrade] = useState<AcademicGrade>('universidad');
   const [utility, setUtility] = useState<UtilityMode>('none');
+  const [isUtilityMenuOpen, setIsUtilityMenuOpen] = useState(false);
   const [memories, setMemories] = useState<MemoryItem[]>(() => JSON.parse(localStorage.getItem('sam_memories') || '[]'));
   const [gallery, setGallery] = useState<string[]>(() => JSON.parse(localStorage.getItem('sam_gallery') || '[]'));
   
@@ -114,6 +115,13 @@ const App: React.FC = () => {
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [currentMessages, generation.isGenerating]);
 
+  const utilityModes: { id: UtilityMode; label: string; icon: string }[] = [
+    { id: 'none', label: 'Estándar', icon: '🧠' },
+    { id: 'search', label: 'Búsqueda Web', icon: '🌐' },
+    { id: 'academic', label: 'Modo Paper', icon: '🎓' },
+    { id: 'finance', label: 'Finanzas', icon: '📈' },
+  ];
+
   return (
     <>
       {isInitializing && <SplashScreen onComplete={() => setIsInitializing(false)} />}
@@ -122,14 +130,14 @@ const App: React.FC = () => {
         
         <main className="flex-1 flex flex-col relative z-10 w-full max-w-[500px] mx-auto overflow-hidden">
           
-          {/* HEADER (Imagen referencia) */}
+          {/* HEADER */}
           <header className="flex items-center justify-between px-6 pt-12 pb-4 shrink-0 safe-area-top">
             <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-white/90">
               <ICONS.Menu />
             </button>
-            <h2 className="text-[17px] font-medium text-white/90">Nueva conversación</h2>
+            <h2 className="text-[17px] font-medium text-white/90">SAM Systems</h2>
             <button className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[13px] font-medium text-white">
-              Iniciar sesión
+              SAM Elite
             </button>
           </header>
 
@@ -137,7 +145,11 @@ const App: React.FC = () => {
           <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-4 overscroll-contain">
             {currentMessages.length === 0 && !isCreativeViewOpen ? (
               <div className="h-full flex flex-col items-center justify-center animate-in fade-in duration-1000">
-                <h1 className="text-[26px] font-semibold text-white tracking-tight mb-20">¡Me alegra que estés aquí!</h1>
+                <div className="mb-8 p-6 bg-white/5 rounded-full border border-white/10">
+                   <SAM_LOGO className="w-12 h-12 text-white" />
+                </div>
+                <h1 className="text-[26px] font-semibold text-white tracking-tight mb-2 text-center px-4">¡Me alegra que estés aquí!</h1>
+                <p className="text-zinc-500 text-sm text-center px-10">Inicie una consulta estratégica o explore el potencial creativo.</p>
               </div>
             ) : isCreativeViewOpen ? (
                <div className="space-y-10 pt-10 animate-in fade-in duration-700">
@@ -149,7 +161,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {['Cinematic', 'Minimal', 'Luxury 3D', 'Architecture'].map((s, i) => (
-                      <button key={i} onClick={() => setInputValue(`Create a ${s} style visual`)} className="bg-white/5 p-4 rounded-2xl border border-white/5 text-[11px] font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-all active:scale-95">
+                      <button key={i} onClick={() => setInputValue(`Generar un visual estilo ${s}`)} className="bg-white/5 p-4 rounded-2xl border border-white/5 text-[11px] font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-all active:scale-95">
                         {s}
                       </button>
                     ))}
@@ -180,7 +192,7 @@ const App: React.FC = () => {
                 {generation.isGenerating && (
                   <div className="flex gap-2 items-center text-[12px] text-zinc-500 animate-pulse">
                     <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                    Analizando...
+                    Procesando respuesta...
                   </div>
                 )}
                 <div ref={messagesEndRef} className="h-10" />
@@ -188,14 +200,33 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* INPUT SECTION (Imagen referencia) */}
-          <div className="shrink-0 px-6 pt-2 pb-6 flex flex-col gap-4">
+          {/* INPUT SECTION */}
+          <div className="shrink-0 px-6 pt-2 pb-6 flex flex-col gap-4 relative">
             
             {/* Quick Actions Chips */}
             {currentMessages.length === 0 && !isCreativeViewOpen && (
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                <button onClick={() => setInputValue("Crear una imagen")} className="shrink-0 bg-white/[0.08] px-5 py-3 rounded-xl border border-white/5 text-[14px] text-zinc-300">Crear una imagen</button>
-                <button onClick={() => setInputValue("Recomendar un producto")} className="shrink-0 bg-white/[0.08] px-5 py-3 rounded-xl border border-white/5 text-[14px] text-zinc-300">Recomendar un producto</button>
+                <button onClick={() => handleSend("Crear una imagen")} className="shrink-0 bg-white/[0.08] px-5 py-3 rounded-xl border border-white/5 text-[14px] text-zinc-300">Crear una imagen</button>
+                <button onClick={() => handleSend("Recomendar un producto")} className="shrink-0 bg-white/[0.08] px-5 py-3 rounded-xl border border-white/5 text-[14px] text-zinc-300">Recomendar un producto</button>
+              </div>
+            )}
+
+            {/* Utility Selector Menu */}
+            {isUtilityMenuOpen && (
+              <div className="absolute bottom-[100%] left-6 right-6 mb-2 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 z-[50]">
+                {utilityModes.map((um) => (
+                  <button 
+                    key={um.id} 
+                    onClick={() => { setUtility(um.id); setIsUtilityMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-white/5 ${utility === um.id ? 'bg-white/10' : ''}`}
+                  >
+                    <span className="text-xl">{um.icon}</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">{um.label}</p>
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{um.id === 'none' ? 'General' : 'Especializado'}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
 
@@ -206,18 +237,30 @@ const App: React.FC = () => {
               </button>
               <input 
                 className="bg-transparent border-none outline-none flex-1 text-white placeholder-zinc-500 text-[15px] px-2"
-                placeholder={isCreativeViewOpen ? "Protocolo de diseño..." : "Enviar un mensaje a SAM..."}
+                placeholder={isCreativeViewOpen ? "Protocolo de diseño..." : "Consultar a SAM..."}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               />
-              <button onClick={() => handleSend()} className="p-2 text-zinc-400 hover:text-white transition-colors">
-                {inputValue.trim() ? <ICONS.Send /> : <ICONS.Mic />}
-              </button>
+              <div className="flex items-center gap-1">
+                {!inputValue.trim() && (
+                  <button 
+                    onClick={() => setIsUtilityMenuOpen(!isUtilityMenuOpen)} 
+                    className={`p-2 transition-all rounded-full flex items-center justify-center ${utility !== 'none' ? 'bg-blue-500/20 text-blue-400' : 'text-zinc-400 hover:text-white'}`}
+                  >
+                    {utility === 'none' ? <ICONS.Zap /> : <span>{utilityModes.find(m => m.id === utility)?.icon}</span>}
+                  </button>
+                )}
+                {inputValue.trim() && (
+                  <button onClick={() => handleSend()} className="p-2 text-blue-400 hover:text-white transition-colors animate-in zoom-in duration-200">
+                    <ICONS.Send />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* BOTTOM NAVIGATION (Imagen referencia) */}
+          {/* BOTTOM NAVIGATION */}
           <footer className="shrink-0 h-16 bg-[#050505] flex items-center justify-around border-t border-white/[0.03] safe-area-bottom">
             <button onClick={() => { setIsCreativeViewOpen(false); setMode('pregunta'); }} className={`p-3 transition-colors ${!isCreativeViewOpen && mode === 'pregunta' ? 'text-blue-400' : 'text-zinc-500'}`}>
               <ICONS.Home />
@@ -245,14 +288,21 @@ const App: React.FC = () => {
           <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[200] animate-in fade-in duration-300" onClick={() => setIsSidebarOpen(false)}>
             <div className="w-[280px] h-full bg-[#0a0f18] border-r border-white/5 flex flex-col animate-in slide-in-from-left duration-500" onClick={e => e.stopPropagation()}>
               <div className="p-8 border-b border-white/5 flex justify-between items-center">
-                <h2 className="text-white font-bold text-xs tracking-[0.2em] uppercase">SAM Elite</h2>
+                <div className="flex items-center gap-3">
+                   <SAM_LOGO className="w-5 h-5 text-white" />
+                   <h2 className="text-white font-bold text-xs tracking-[0.2em] uppercase">SAM Elite</h2>
+                </div>
                 <button onClick={() => setIsSidebarOpen(false)} className="text-zinc-500 hover:text-white"><ICONS.Close /></button>
               </div>
               <div className="flex-1 p-6 space-y-4 overflow-y-auto no-scrollbar">
                 <div className="space-y-1">
-                  <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest pl-2 mb-2">Protocolos</p>
-                  <button onClick={() => { setMode('pregunta'); setIsSidebarOpen(false); }} className={`w-full text-left p-3 rounded-xl text-[14px] ${mode === 'pregunta' ? 'bg-white/5 text-white' : 'text-zinc-500'}`}>Consultoría</button>
-                  <button onClick={() => { setMode('academic'); setIsSidebarOpen(false); }} className={`w-full text-left p-3 rounded-xl text-[14px] ${mode === 'academic' ? 'bg-white/5 text-white' : 'text-zinc-500'}`}>Mundo Académico</button>
+                  <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest pl-2 mb-2">Sistemas</p>
+                  <button onClick={() => { setMode('pregunta'); setIsSidebarOpen(false); }} className={`w-full text-left p-3 rounded-xl text-[14px] flex items-center gap-3 ${mode === 'pregunta' ? 'bg-white/5 text-white' : 'text-zinc-500'}`}>
+                    <span>💬</span> Consultoría
+                  </button>
+                  <button onClick={() => { setMode('academic'); setIsSidebarOpen(false); }} className={`w-full text-left p-3 rounded-xl text-[14px] flex items-center gap-3 ${mode === 'academic' ? 'bg-white/5 text-white' : 'text-zinc-500'}`}>
+                    <span>📖</span> Academia
+                  </button>
                 </div>
               </div>
               <div className="p-8 border-t border-white/5 text-center">
