@@ -12,8 +12,8 @@
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background: radial-gradient(circle at 50% 30%, #1a2333 0%, #050505 100%);
-        color: #e5e5e5;
+        background-color: #000000;
+        color: #ffffff;
         margin: 0;
         overflow: hidden;
         height: 100vh;
@@ -31,22 +31,12 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
-      @keyframes progress {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-      }
-      .animate-progress {
-        animation: progress 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-      }
       .prose {
         max-width: none !important;
+        color: #e5e7eb !important;
       }
       .prose strong {
         color: #ffffff !important;
-        font-weight: 700 !important;
-      }
-      .prose p {
-        margin-bottom: 1.2em !important;
       }
       .safe-area-top {
         padding-top: env(safe-area-inset-top);
@@ -55,8 +45,7 @@
         padding-bottom: env(safe-area-inset-bottom);
       }
       input::placeholder {
-        color: #6b7280 !important;
-        opacity: 0.8;
+        color: #8e8e93 !important;
       }
     </style>
   <script type="importmap">

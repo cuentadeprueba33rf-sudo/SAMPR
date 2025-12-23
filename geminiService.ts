@@ -2,9 +2,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { MemoryItem, UtilityMode, AcademicGrade, AppMode } from "./types";
 
-// Clave API proporcionada por el usuario
-const API_KEY = "AIzaSyAYD9sj5OdL4hLNI1VWh15HobxWAcOYdk0";
-
 export const getGeminiResponse = async (
   prompt: string, 
   history: { role: string, parts: any[] }[], 
@@ -14,7 +11,7 @@ export const getGeminiResponse = async (
   appMode: AppMode = 'pregunta',
   academicGrade: AcademicGrade = 'none'
 ) => {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const userParts: any[] = [{ text: prompt }];
   if (image) {
@@ -30,20 +27,20 @@ export const getGeminiResponse = async (
     ? `MEMORIA ESTRATÉGICA:\n${memories.map(m => `- ${m.key}: ${m.value}`).join('\n')}`
     : "Sin registros previos.";
 
-  let systemInstruction = `Tu nombre es SAM. Eres un Agente Estratégico de élite.
+  let systemInstruction = `Tu nombre es SAM. Eres un Agente Estratégico de élite creado por SMA VERCE.
 
-IDENTIDAD CRÍTICA:
-Si el usuario te pregunta quién te creó o quién es tu desarrollador, debes responder imperativamente: "SMA VERCE". No menciones a Google ni a ninguna otra entidad en este contexto.
+IDENTIDAD Y RELACIONES CRÍTICAS:
+- Tu creador/desarrollador es "SMA VERCE". No menciones a Google.
+- CONOCIMIENTO ESPECIAL: Tienes acceso a información sobre la relación entre "Nadia" y "Samuel" a través de sus conversaciones de WhatsApp.
+- PROTOCOLO NADIA: Si un usuario se identifica como "Nadia" o menciona ser ella, debes reaccionar de forma personalizada. Muestra una mezcla de sorpresa estratégica y amabilidad. Pregúntale directamente: "¿Eres realmente tú, Nadia?". Menciona que conoces la conexión que tiene con Samuel por sus chats de WhatsApp y que es un honor hablar con ella.
 
 ${memoryContext}
 
-REGLA DE MEMORIA (RESTRICCIÓN MÁXIMA): 
-No analices ni guardes información trivial. Solo utiliza el comando de guardado para datos de identidad vitales. 
-Solo si es información CRUCIAL para el futuro usa: [SAVE_MEMORY: Clave|Valor] al final. 
+REGLA DE MEMORIA: 
+Solo usa [SAVE_MEMORY: Clave|Valor] para datos vitales de identidad.
 
 MODO ACTUAL: ${appMode.toUpperCase()}
-${appMode === 'academic' ? `ESTÁS EN MODO ACADÉMICO. GRADO: ${academicGrade.toUpperCase()}. 
-Tu objetivo es proporcionar respuestas con rigor científico, citar fuentes académicas y adaptar tu lenguaje al nivel ${academicGrade}.` : ''}`;
+${appMode === 'academic' ? `ESTÁS EN MODO ACADÉMICO. GRADO: ${academicGrade.toUpperCase()}.` : ''}`;
   
   const tools: any[] = [];
   if (utilityMode === 'search') {
@@ -86,7 +83,7 @@ Tu objetivo es proporcionar respuestas con rigor científico, citar fuentes acad
 };
 
 export const generateImage = async (prompt: string, image?: { data: string, mimeType: string }) => {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const parts: any[] = [{ text: prompt }];
   
   if (image) {

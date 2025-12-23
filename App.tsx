@@ -1,318 +1,283 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { AppMode, Message, GenerationState, UtilityMode, ThemeMode, MemoryItem, AcademicGrade } from './types';
+import { AppMode, Message, GenerationState, UtilityMode, MemoryItem, AcademicGrade } from './types';
 import { ICONS, SAM_LOGO } from './constants';
 import { getGeminiResponse, generateImage } from './geminiService';
 
-const SplashScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
-  const [stage, setStage] = useState(0);
+// Componente para animar el texto palabra por palabra
+const Typewriter = memo(({ text, speed = 10, onComplete }: { text: string; speed?: number; onComplete?: () => void }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [index, setIndex] = useState(0);
+  const words = text.split(' ');
 
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setStage(1), 500),   
-      setTimeout(() => setStage(2), 1500),  
-      setTimeout(() => setStage(3), 2800),  
-      setTimeout(() => onComplete(), 3500), 
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [onComplete]);
+    if (index < words.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText((prev) => prev + (prev ? ' ' : '') + words[index]);
+        setIndex((prev) => prev + 1);
+      }, speed);
+      return () => clearTimeout(timeout);
+    } else if (onComplete) {
+      onComplete();
+    }
+  }, [index, words, speed, onComplete]);
 
   return (
-    <div className={`fixed inset-0 z-[1000] bg-[#050505] flex flex-col items-center justify-center transition-opacity duration-1000 ${stage === 3 ? 'opacity-0' : 'opacity-100'}`}>
-      <div className="relative">
-        <div className={`absolute inset-0 bg-white/5 blur-[80px] rounded-full transition-transform duration-1000 scale-150 ${stage >= 1 ? 'opacity-100' : 'opacity-0'}`}></div>
-        <div className={`relative transition-all duration-1000 transform ${stage >= 1 ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}>
-          <SAM_LOGO className="w-16 h-16 text-white" />
-        </div>
-      </div>
-      <div className={`mt-10 flex flex-col items-center transition-all duration-1000 transform ${stage >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-        <h1 className="text-white text-lg font-light tracking-[0.5em] uppercase">SAM</h1>
-        <p className="text-[8px] text-zinc-500 font-bold tracking-[0.3em] uppercase mt-3">SMA VERCE Systems</p>
-      </div>
+    <div className="prose prose-invert prose-sm leading-relaxed text-[15px] animate-in fade-in duration-500">
+      <ReactMarkdown>{displayedText}</ReactMarkdown>
     </div>
   );
-};
+});
 
 const App: React.FC = () => {
-  const [isInitializing, setIsInitializing] = useState(true);
   const [mode, setMode] = useState<AppMode>('pregunta');
   const [academicGrade, setAcademicGrade] = useState<AcademicGrade>('universidad');
   const [utility, setUtility] = useState<UtilityMode>('none');
   const [isUtilityMenuOpen, setIsUtilityMenuOpen] = useState(false);
   const [memories, setMemories] = useState<MemoryItem[]>(() => JSON.parse(localStorage.getItem('sam_memories') || '[]'));
-  const [gallery, setGallery] = useState<string[]>(() => JSON.parse(localStorage.getItem('sam_gallery') || '[]'));
   
-  const [dailyUsage, setDailyUsage] = useState<{ count: number, date: string }>(() => {
-    const saved = localStorage.getItem('sam_daily_limit');
-    const today = new Date().toDateString();
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.date === today) return parsed;
-    }
-    return { count: 0, date: today };
-  });
-
-  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [chatMessages, setChatMessages] = useState<Message[]>([
+    { role: 'sam', content: 'Hola 😊 ¿cómo estás? ¿Qué tal va tu día?', type: 'text' }
+  ]);
   const [academicMessages, setAcademicMessages] = useState<Message[]>([]);
 
   const currentMessages = mode === 'pregunta' ? chatMessages : academicMessages;
   const setCurrentMessages = mode === 'pregunta' ? setChatMessages : setAcademicMessages;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isCreativeViewOpen, setIsCreativeViewOpen] = useState(false); 
   const [inputValue, setInputValue] = useState('');
-  const [selectedImage, setSelectedImage] = useState<{ base64: string; type: string } | null>(null);
   const [generation, setGeneration] = useState<GenerationState>({ isGenerating: false });
+  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const showToast = (message: string) => {
+    setToast({ message, visible: true });
+    setTimeout(() => setToast({ message: '', visible: false }), 2500);
+  };
+
   const handleSend = useCallback(async (textOverride?: string) => {
     const finalContent = textOverride ?? inputValue;
-    if (!finalContent.trim() && !selectedImage) return;
+    if (!finalContent.trim()) return;
 
-    if (isCreativeViewOpen) {
-      if (dailyUsage.count >= 5) {
-        setCurrentMessages(prev => [...prev, { role: 'sam', content: '"SAM REQUIERE RECALIBRACIÓN" Por favor, regrese mañana.', type: 'text' }]);
-        setInputValue('');
-        return;
-      }
-      setGeneration({ isGenerating: true });
-      const currentAsset = selectedImage;
-      setInputValue('');
-      setSelectedImage(null);
-      try {
-        const imageUrl = await generateImage(finalContent, currentAsset ? { data: currentAsset.base64, mimeType: currentAsset.type } : undefined);
-        if (imageUrl) {
-          setGallery(prev => [imageUrl, ...prev]);
-          setDailyUsage(prev => ({ ...prev, count: prev.count + 1 }));
-          setCurrentMessages(prev => [...prev, 
-            { role: 'user', content: finalContent, type: 'text' },
-            { role: 'sam', content: 'Generación completada satisfactoriamente.', type: 'image', mediaUrl: imageUrl }
-          ]);
-        }
-      } catch (e) {
-        setCurrentMessages(prev => [...prev, { role: 'sam', content: 'Error en protocolo de generación. Reintente.', type: 'text' }]);
-      } finally { setGeneration( { isGenerating: false }); }
-      return;
-    }
-
-    const newUserMessage: Message = { role: 'user', content: finalContent, type: 'text', mediaUrl: selectedImage ? `data:${selectedImage.type};base64,${selectedImage.base64}` : undefined };
+    const newUserMessage: Message = { role: 'user', content: finalContent, type: 'text' };
     setCurrentMessages(prev => [...prev, newUserMessage]);
     setInputValue('');
-    setSelectedImage(null);
+    setIsUtilityMenuOpen(false);
     setGeneration({ isGenerating: true });
 
     try {
-      const history = currentMessages.slice(-10).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
+      const history = currentMessages.slice(-12).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
       const result = await getGeminiResponse(finalContent, history, undefined, utility, memories, mode, academicGrade);
-      setCurrentMessages(prev => [...prev, { role: 'sam', content: result.text, type: 'text' }]);
+      
+      // Añadimos la propiedad isNew para activar la animación de typewriter
+      setCurrentMessages(prev => [...prev, { 
+        role: 'sam', 
+        content: result.text, 
+        type: 'text',
+        isNew: true 
+      }]);
     } catch (error) {
-      setCurrentMessages(prev => [...prev, { role: 'sam', content: 'Servidor SAM temporalmente ocupado. Por favor, espere.', type: 'text' }]);
+      setCurrentMessages(prev => [...prev, { role: 'sam', content: 'Error en la conexión con SAM.', type: 'text' }]);
     } finally { setGeneration({ isGenerating: false }); }
-  }, [inputValue, selectedImage, currentMessages, mode, utility, memories, academicGrade, setCurrentMessages, isCreativeViewOpen, dailyUsage]);
+  }, [inputValue, currentMessages, mode, utility, memories, academicGrade, setCurrentMessages]);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [currentMessages, generation.isGenerating]);
+  useEffect(() => { 
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+  }, [currentMessages, generation.isGenerating]);
+
+  const handleNewChat = () => {
+    setCurrentMessages([{ role: 'sam', content: 'Nueva sesión estratégica iniciada.', type: 'text' }]);
+    showToast("Chat reiniciado");
+  };
+
+  const handleCopy = (content: string) => {
+    navigator.clipboard.writeText(content);
+    showToast("Copiado");
+  };
+
+  const handleFeedback = (isPositive: boolean) => {
+    showToast(isPositive ? "Feedback positivo" : "Feedback negativo");
+  };
+
+  const handleSpeak = (content: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(content);
+      utterance.lang = 'es-ES';
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   const utilityModes: { id: UtilityMode; label: string; icon: string }[] = [
-    { id: 'none', label: 'Estándar', icon: '🧠' },
-    { id: 'search', label: 'Búsqueda Web', icon: '🌐' },
-    { id: 'academic', label: 'Modo Paper', icon: '🎓' },
-    { id: 'finance', label: 'Finanzas', icon: '📈' },
+    { id: 'none', label: 'IA', icon: '🧠' },
+    { id: 'search', label: 'Web', icon: '🌐' },
+    { id: 'finance', label: 'Fin.', icon: '📈' },
+    { id: 'academic', label: 'Acad.', icon: '🎓' },
   ];
 
   return (
-    <>
-      {isInitializing && <SplashScreen onComplete={() => setIsInitializing(false)} />}
+    <div className="flex flex-col h-[100dvh] w-full bg-[#000000] text-white overflow-hidden safe-area-top safe-area-bottom relative">
       
-      <div className={`flex flex-col h-[100dvh] w-full text-zinc-300 overflow-hidden font-sans relative transition-opacity duration-1000 ${isInitializing ? 'opacity-0' : 'opacity-100'}`}>
-        
-        <main className="flex-1 flex flex-col relative z-10 w-full max-w-[500px] mx-auto overflow-hidden">
-          
-          {/* HEADER */}
-          <header className="flex items-center justify-between px-6 pt-12 pb-4 shrink-0 safe-area-top">
-            <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-white/90">
-              <ICONS.Menu />
-            </button>
-            <h2 className="text-[17px] font-medium text-white/90">SAM Systems</h2>
-            <button className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[13px] font-medium text-white">
-              SAM Elite
-            </button>
-          </header>
+      {/* TOAST */}
+      {toast.visible && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[500] bg-[#1a1a1a] border border-white/10 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider animate-in fade-in slide-in-from-top-4 duration-300 shadow-2xl">
+          {toast.message}
+        </div>
+      )}
 
-          {/* MAIN SCROLL AREA */}
-          <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-4 overscroll-contain">
-            {currentMessages.length === 0 && !isCreativeViewOpen ? (
-              <div className="h-full flex flex-col items-center justify-center animate-in fade-in duration-1000">
-                <div className="mb-8 p-6 bg-white/5 rounded-full border border-white/10">
-                   <SAM_LOGO className="w-12 h-12 text-white" />
+      {/* HEADER COMPACTO */}
+      <header className="flex items-center justify-between px-4 py-3 shrink-0 z-10 max-w-lg mx-auto w-full">
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="w-10 h-10 bg-[#1a1a1a] rounded-full flex items-center justify-center text-white/90 active:scale-90 transition-all border border-white/5"
+        >
+          <ICONS.Menu />
+        </button>
+
+        <div className="flex items-center bg-[#1a1a1a] rounded-full px-3 py-1.5 gap-3 shadow-sm border border-white/5">
+          <button onClick={handleNewChat} className="text-white/70 active:scale-90 p-1"><ICONS.Edit /></button>
+          <button onClick={() => showToast("Opciones")} className="text-white/70 active:scale-90 p-1"><ICONS.Dots /></button>
+        </div>
+      </header>
+
+      {/* AREA DE CHAT */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-2">
+        <div className="max-w-md mx-auto space-y-6 pb-6">
+          {currentMessages.map((msg, idx) => (
+            <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+              {msg.role === 'user' ? (
+                <div className="bg-[#004a8f] px-4 py-2 rounded-[20px] max-w-[85%] text-[15px] leading-snug shadow-lg">
+                  {msg.content}
                 </div>
-                <h1 className="text-[26px] font-semibold text-white tracking-tight mb-2 text-center px-4">¡Me alegra que estés aquí!</h1>
-                <p className="text-zinc-500 text-sm text-center px-10">Inicie una consulta estratégica o explore el potencial creativo.</p>
-              </div>
-            ) : isCreativeViewOpen ? (
-               <div className="space-y-10 pt-10 animate-in fade-in duration-700">
-                  <div className="relative w-full rounded-3xl overflow-hidden aspect-video shadow-2xl border border-white/5">
-                    <img src="https://img.freepik.com/premium-photo/anime-santa-claus-character-illustration-with-festive-elements_1177187-178636.jpg" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-end p-6">
-                      <h2 className="text-xl font-medium text-white">Potencial Creativo SAM</h2>
+              ) : (
+                <div className="w-full">
+                  {msg.isNew ? (
+                    <Typewriter 
+                      text={msg.content} 
+                      onComplete={() => {
+                        // Opcional: limpiar la flag isNew después de completar
+                        const newMsgs = [...currentMessages];
+                        newMsgs[idx] = { ...newMsgs[idx], isNew: false };
+                        // No seteamos el estado directamente aquí para evitar loops, 
+                        // simplemente se queda como está.
+                      }}
+                    />
+                  ) : (
+                    <div className="prose prose-invert prose-sm leading-relaxed text-[15px]">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
+                  )}
+                  <div className="flex items-center gap-4 mt-3 text-[#3a3a3c]">
+                    <button onClick={() => handleCopy(msg.content)} className="hover:text-white transition-colors active:scale-90"><ICONS.Copy /></button>
+                    <button onClick={() => handleFeedback(true)} className="hover:text-white transition-colors active:scale-90"><ICONS.ThumbUp /></button>
+                    <button onClick={() => handleFeedback(false)} className="hover:text-white transition-colors active:scale-90"><ICONS.ThumbDown /></button>
+                    <button onClick={() => handleSpeak(msg.content)} className="hover:text-white transition-colors active:scale-90"><ICONS.Speaker /></button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {['Cinematic', 'Minimal', 'Luxury 3D', 'Architecture'].map((s, i) => (
-                      <button key={i} onClick={() => setInputValue(`Generar un visual estilo ${s}`)} className="bg-white/5 p-4 rounded-2xl border border-white/5 text-[11px] font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-all active:scale-95">
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-               </div>
-            ) : (
-              <div className="space-y-10">
-                {currentMessages.map((msg, idx) => (
-                  <div key={idx} className={`animate-in fade-in slide-in-from-bottom-2 duration-500 ${msg.role === 'sam' ? 'pl-0' : 'flex flex-col items-end'}`}>
-                    {msg.role === 'user' ? (
-                      <div className="bg-[#1e293b]/50 px-5 py-3 rounded-[22px] max-w-[90%] border border-white/5">
-                        <p className="text-white text-[15px] leading-relaxed">{msg.content}</p>
-                      </div>
-                    ) : (
-                      <div className="max-w-none">
-                        <div className="prose prose-invert leading-relaxed text-[16px] text-zinc-200">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
-                        </div>
-                        {msg.mediaUrl && (
-                          <div className="mt-6 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                            <img src={msg.mediaUrl} className="w-full h-auto" />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {generation.isGenerating && (
-                  <div className="flex gap-2 items-center text-[12px] text-zinc-500 animate-pulse">
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                    Procesando respuesta...
-                  </div>
-                )}
-                <div ref={messagesEndRef} className="h-10" />
-              </div>
-            )}
-          </div>
-
-          {/* INPUT SECTION */}
-          <div className="shrink-0 px-6 pt-2 pb-6 flex flex-col gap-4 relative">
-            
-            {/* Quick Actions Chips */}
-            {currentMessages.length === 0 && !isCreativeViewOpen && (
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                <button onClick={() => handleSend("Crear una imagen")} className="shrink-0 bg-white/[0.08] px-5 py-3 rounded-xl border border-white/5 text-[14px] text-zinc-300">Crear una imagen</button>
-                <button onClick={() => handleSend("Recomendar un producto")} className="shrink-0 bg-white/[0.08] px-5 py-3 rounded-xl border border-white/5 text-[14px] text-zinc-300">Recomendar un producto</button>
-              </div>
-            )}
-
-            {/* Utility Selector Menu */}
-            {isUtilityMenuOpen && (
-              <div className="absolute bottom-[100%] left-6 right-6 mb-2 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 z-[50]">
-                {utilityModes.map((um) => (
-                  <button 
-                    key={um.id} 
-                    onClick={() => { setUtility(um.id); setIsUtilityMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-white/5 ${utility === um.id ? 'bg-white/10' : ''}`}
-                  >
-                    <span className="text-xl">{um.icon}</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{um.label}</p>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{um.id === 'none' ? 'General' : 'Especializado'}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Rounded Input Bar */}
-            <div className="bg-[#121a29]/90 border border-white/[0.08] rounded-[28px] h-14 flex items-center px-4 shadow-xl">
-              <button onClick={() => fileInputRef.current?.click()} className="p-2 text-zinc-400 hover:text-white transition-colors">
-                <ICONS.Plus />
-              </button>
-              <input 
-                className="bg-transparent border-none outline-none flex-1 text-white placeholder-zinc-500 text-[15px] px-2"
-                placeholder={isCreativeViewOpen ? "Protocolo de diseño..." : "Consultar a SAM..."}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              />
-              <div className="flex items-center gap-1">
-                {!inputValue.trim() && (
-                  <button 
-                    onClick={() => setIsUtilityMenuOpen(!isUtilityMenuOpen)} 
-                    className={`p-2 transition-all rounded-full flex items-center justify-center ${utility !== 'none' ? 'bg-blue-500/20 text-blue-400' : 'text-zinc-400 hover:text-white'}`}
-                  >
-                    {utility === 'none' ? <ICONS.Zap /> : <span>{utilityModes.find(m => m.id === utility)?.icon}</span>}
-                  </button>
-                )}
-                {inputValue.trim() && (
-                  <button onClick={() => handleSend()} className="p-2 text-blue-400 hover:text-white transition-colors animate-in zoom-in duration-200">
-                    <ICONS.Send />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* BOTTOM NAVIGATION */}
-          <footer className="shrink-0 h-16 bg-[#050505] flex items-center justify-around border-t border-white/[0.03] safe-area-bottom">
-            <button onClick={() => { setIsCreativeViewOpen(false); setMode('pregunta'); }} className={`p-3 transition-colors ${!isCreativeViewOpen && mode === 'pregunta' ? 'text-blue-400' : 'text-zinc-500'}`}>
-              <ICONS.Home />
-            </button>
-            <button onClick={() => setIsCreativeViewOpen(true)} className={`p-3 transition-colors ${isCreativeViewOpen ? 'text-blue-400' : 'text-zinc-500'}`}>
-              <ICONS.Compass />
-            </button>
-            <button onClick={() => { setIsCreativeViewOpen(false); setMode('academic'); }} className={`p-3 transition-colors ${!isCreativeViewOpen && mode === 'academic' ? 'text-blue-400' : 'text-zinc-500'}`}>
-              <ICONS.Tabs />
-            </button>
-          </footer>
-
-          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              const r = new FileReader();
-              r.onloadend = () => setSelectedImage({ base64: (r.result as string).split(',')[1], type: file.type });
-              r.readAsDataURL(file);
-            }
-          }} />
-        </main>
-
-        {/* SIDEBAR MODAL */}
-        {isSidebarOpen && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[200] animate-in fade-in duration-300" onClick={() => setIsSidebarOpen(false)}>
-            <div className="w-[280px] h-full bg-[#0a0f18] border-r border-white/5 flex flex-col animate-in slide-in-from-left duration-500" onClick={e => e.stopPropagation()}>
-              <div className="p-8 border-b border-white/5 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                   <SAM_LOGO className="w-5 h-5 text-white" />
-                   <h2 className="text-white font-bold text-xs tracking-[0.2em] uppercase">SAM Elite</h2>
                 </div>
-                <button onClick={() => setIsSidebarOpen(false)} className="text-zinc-500 hover:text-white"><ICONS.Close /></button>
-              </div>
-              <div className="flex-1 p-6 space-y-4 overflow-y-auto no-scrollbar">
-                <div className="space-y-1">
-                  <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest pl-2 mb-2">Sistemas</p>
-                  <button onClick={() => { setMode('pregunta'); setIsSidebarOpen(false); }} className={`w-full text-left p-3 rounded-xl text-[14px] flex items-center gap-3 ${mode === 'pregunta' ? 'bg-white/5 text-white' : 'text-zinc-500'}`}>
-                    <span>💬</span> Consultoría
-                  </button>
-                  <button onClick={() => { setMode('academic'); setIsSidebarOpen(false); }} className={`w-full text-left p-3 rounded-xl text-[14px] flex items-center gap-3 ${mode === 'academic' ? 'bg-white/5 text-white' : 'text-zinc-500'}`}>
-                    <span>📖</span> Academia
-                  </button>
-                </div>
-              </div>
-              <div className="p-8 border-t border-white/5 text-center">
-                <p className="text-[9px] text-zinc-700 font-bold uppercase tracking-[0.3em]">SMA VERCE Systems</p>
-              </div>
+              )}
             </div>
-          </div>
-        )}
+          ))}
+          {generation.isGenerating && (
+            <div className="flex gap-1.5 items-center text-[#4a4a4a] pl-2">
+              <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
+              <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.1s]"></div>
+              <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
-    </>
+
+      {/* BARRA DE ENTRADA UNIFICADA */}
+      <div className="px-4 pt-2 pb-6 shrink-0 z-20 w-full flex flex-col items-center">
+        <div className="max-w-md w-full flex items-center gap-2.5 relative">
+          
+          {/* Selector de Utilidad (Flotante) */}
+          {isUtilityMenuOpen && (
+            <div className="absolute bottom-[125%] left-0 right-0 bg-[#121212] border border-white/10 rounded-2xl p-1.5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 grid grid-cols-4 gap-1">
+              {utilityModes.map(m => (
+                <button 
+                  key={m.id}
+                  onClick={() => { setUtility(m.id); setIsUtilityMenuOpen(false); showToast(m.label); }}
+                  className={`flex flex-col items-center justify-center py-2.5 rounded-xl transition-all ${utility === m.id ? 'bg-blue-600 text-white' : 'text-[#8e8e93] hover:bg-white/5'}`}
+                >
+                  <span className="text-sm">{m.icon}</span>
+                  <span className="text-[8px] font-bold mt-1 uppercase tracking-tighter">{m.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* CUADRO DE TEXTO CON BOTÓN + INTERNO */}
+          <div className="flex-1 bg-[#1a1a1a] rounded-full h-11 flex items-center pl-1 pr-3 gap-2 border border-white/5 focus-within:border-blue-500/30 transition-all shadow-xl">
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="w-9 h-9 bg-white/5 rounded-full flex items-center justify-center text-white shrink-0 active:scale-90 transition-all hover:bg-white/10"
+            >
+              <ICONS.Plus />
+            </button>
+
+            <input 
+              className="bg-transparent border-none outline-none flex-1 text-white placeholder-[#4a4a4a] text-[15px] font-medium"
+              placeholder="Escribir a SAM..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            />
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsUtilityMenuOpen(!isUtilityMenuOpen)} 
+                className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${utility !== 'none' ? 'bg-blue-600/20 text-blue-400' : 'text-[#8e8e93] hover:text-white'}`}
+              >
+                <ICONS.Zap />
+              </button>
+              
+              {inputValue.trim() ? (
+                <button onClick={() => handleSend()} className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white active:scale-90 animate-in zoom-in duration-200">
+                  <ICONS.Send />
+                </button>
+              ) : (
+                <button onClick={() => showToast("Audio...")} className="text-[#007aff] active:scale-90"><ICONS.Waveform /></button>
+              )}
+            </div>
+          </div>
+        </div>
+        <p className="text-[8px] text-[#2a2a2a] mt-3 uppercase tracking-[0.4em] font-bold">SMA VERCE SYSTEMS</p>
+      </div>
+
+      <input type="file" ref={fileInputRef} className="hidden" />
+
+      {/* SIDEBAR MODAL */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[300] animate-in fade-in duration-300" onClick={() => setIsSidebarOpen(false)}>
+          <div className="w-[260px] h-full bg-[#0a0a0a] border-r border-white/5 flex flex-col animate-in slide-in-from-left duration-300" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-white/5 flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <SAM_LOGO className="w-4 h-4 text-white" />
+                <span className="text-white font-bold uppercase text-[9px] tracking-widest">SAM ELITE</span>
+              </div>
+              <button onClick={() => setIsSidebarOpen(false)} className="text-[#4a4a4a] p-1"><ICONS.Close /></button>
+            </div>
+            
+            <div className="flex-1 p-5 space-y-6">
+              <div className="space-y-1.5">
+                <p className="text-[8px] text-[#2a2a2a] font-bold uppercase tracking-widest mb-3 pl-2">Sistemas</p>
+                <button onClick={() => { setMode('pregunta'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-medium transition-all ${mode === 'pregunta' ? 'bg-[#1a1a1a] text-white border border-white/5' : 'text-[#4a4a4a]'}`}>
+                  💬 Consultoría
+                </button>
+                <button onClick={() => { setMode('academic'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-medium transition-all ${mode === 'academic' ? 'bg-[#1a1a1a] text-white border border-white/5' : 'text-[#4a4a4a]'}`}>
+                  🎓 Academia
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

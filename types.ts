@@ -23,6 +23,7 @@ export interface Message {
   mediaUrl?: string;
   sources?: GroundingSource[];
   memoryUpdated?: boolean;
+  isNew?: boolean; // Nueva propiedad para animaciones
 }
 
 export interface GenerationState {
